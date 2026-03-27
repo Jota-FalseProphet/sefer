@@ -1,0 +1,114 @@
+# =============================================================================
+# Odoo 15 - Requisitos completos para Python 3.12 
+# =============================================================================
+# Generado para el workspace: 
+# Python target: 3.12
+#
+# Instalar con:
+#   myvenv/bin/pip install -r requirements.txt
+# =============================================================================
+
+# --- Core Odoo dependencies ---
+setuptools>=65.0.0
+wheel
+pip
+
+# --- Template & Markup ---
+Jinja2==3.1.2
+MarkupSafe==2.1.5
+
+# --- Web framework ---
+Werkzeug==2.0.2
+
+# --- Database ---
+psycopg2==2.9.9
+
+# --- XML / HTML ---
+lxml==5.2.1
+lxml-html-clean
+docutils==0.16
+defusedxml>=0.4.1
+
+# --- HTTP / Networking ---
+requests==2.31.0
+urllib3==2.0.7
+idna==2.8
+chardet==3.0.4
+gevent==24.2.1
+greenlet==3.0.3
+
+# --- Crypto / SSL ---
+cryptography==42.0.8
+pyopenssl==24.1.0
+
+# --- i18n / Locale ---
+Babel==2.9.1
+pytz
+polib==1.1.0
+python-dateutil==2.7.3
+
+# --- PDF / Reports ---
+reportlab==4.1.0
+PyPDF2==2.12.1
+wkhtmltopdf  # system package, not pip (installed via: yay -S wkhtmltopdf-bin)
+# pdf2image requires poppler-utils system package
+pdf2image
+qrcode==6.1
+
+# --- Excel / Spreadsheet ---
+xlrd==2.0.1
+XlsxWriter==1.1.2
+xlwt==1.3.0
+openpyxl
+
+# --- Image ---
+Pillow==10.2.0
+pyheif
+
+# --- LDAP ---
+python-ldap==3.4.4
+
+# --- SOAP / Web Services ---
+zeep==3.4.0
+
+# --- eBay integration ---
+ebaysdk==2.1.5
+
+# --- Barcode / QR ---
+# qrcode already listed above
+pyserial==3.4
+pyusb==1.2.1
+
+# --- AST / Code tools ---
+astor
+decorator==4.4.2
+
+# --- Numbers / Text ---
+num2words==0.5.6
+python-stdnum==1.13
+unidecode
+
+# --- Misc utilities ---
+cachetools
+deepdiff<8
+freezegun==0.3.15
+passlib==1.7.3
+psutil==5.9.8
+pydot==1.4.1
+PyYAML
+vobject==0.9.6.1
+geopy
+libsass==0.22.0
+netifaces
+
+# --- Banking / Finance (for OCA modules) ---
+schwifty==2024.4.0
+ofxparse==0.21
+
+# --- XML Signatures (for AEAT/ATC tax modules) ---
+xmlsig
+
+# --- OCA module dependencies (commonly needed) ---
+openupgradelib
+python-stdnum
+schwifty
