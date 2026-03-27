@@ -1,0 +1,79 @@
+
+[![Runboat](https://img.shields.io/badge/runboat-Try%20me-875A7B.png)](https://runboat.odoo-community.org/builds?repo=OCA/project&target_branch=15.0)
+[![Pre-commit Status](https://github.com/OCA/project/actions/workflows/pre-commit.yml/badge.svg?branch=15.0)](https://github.com/OCA/project/actions/workflows/pre-commit.yml?query=branch%3A15.0)
+[![Build Status](https://github.com/OCA/project/actions/workflows/test.yml/badge.svg?branch=15.0)](https://github.com/OCA/project/actions/workflows/test.yml?query=branch%3A15.0)
+[![codecov](https://codecov.io/gh/OCA/project/branch/15.0/graph/badge.svg)](https://codecov.io/gh/OCA/project)
+[![Translation Status](https://translation.odoo-community.org/widgets/project-15-0/-/svg-badge.svg)](https://translation.odoo-community.org/engage/project-15-0/?utm_source=widget)
+
+<!-- /!\ do not modify above this line -->
+
+# project
+
+TODO: add repo description.
+
+<!-- /!\ do not modify below this line -->
+
+<!-- prettier-ignore-start -->
+
+[//]: # (addons)
+
+Available addons
+----------------
+addon | version | maintainers | summary
+--- | --- | --- | ---
+[project_administrator_restricted_visibility](project_administrator_restricted_visibility/) | 15.0.1.0.0 |  | Adds a 'Project Administrator' access group with restricted visibility to 'Projects'
+[project_department](project_department/) | 15.0.1.0.1 |  | Project Department Categorization
+[project_duplicate_subtask](project_duplicate_subtask/) | 15.0.1.0.0 |  | The module adds an action to duplicate tasks with the child subtasks
+[project_forecast_line](project_forecast_line/) | 15.0.1.3.4 |  | Project Forecast Lines
+[project_forecast_line_bokeh_chart](project_forecast_line_bokeh_chart/) | 15.0.1.0.3 |  | Project Forecast Lines Bokeh Chart
+[project_forecast_line_deadline](project_forecast_line_deadline/) | 15.0.1.0.0 | <a href='https://github.com/ntsirintanis'><img src='https://github.com/ntsirintanis.png' width='32' height='32' style='border-radius:50%;' alt='ntsirintanis'/></a> | Project Forecast end date based on deadline of task.
+[project_forecast_line_holidays_public](project_forecast_line_holidays_public/) | 15.0.1.1.1 |  | Project Forecast Lines taking public holidays into account
+[project_hr](project_hr/) | 15.0.1.0.0 | <a href='https://github.com/pedrobaeza'><img src='https://github.com/pedrobaeza.png' width='32' height='32' style='border-radius:50%;' alt='pedrobaeza'/></a> | Link HR with project
+[project_list](project_list/) | 15.0.2.0.0 |  | Projects list view
+[project_parent_task_filter](project_parent_task_filter/) | 15.0.1.1.0 |  | Add a filter to show the parent tasks
+[project_purchase_analytic_global](project_purchase_analytic_global/) | 15.0.1.0.1 | <a href='https://github.com/yankinmax'><img src='https://github.com/yankinmax.png' width='32' height='32' style='border-radius:50%;' alt='yankinmax'/></a> | Project - Create Purchase Orders with Analytic Account
+[project_role](project_role/) | 15.0.1.0.2 | <a href='https://github.com/alexey-pelykh'><img src='https://github.com/alexey-pelykh.png' width='32' height='32' style='border-radius:50%;' alt='alexey-pelykh'/></a> | Project role-based roster
+[project_sale_order_link](project_sale_order_link/) | 15.0.1.0.1 | <a href='https://github.com/EmilioPascual'><img src='https://github.com/EmilioPascual.png' width='32' height='32' style='border-radius:50%;' alt='EmilioPascual'/></a> | Sales order linked to project, tasks or employee map
+[project_sequence](project_sequence/) | 15.0.0.2.2 | <a href='https://github.com/yajo'><img src='https://github.com/yajo.png' width='32' height='32' style='border-radius:50%;' alt='yajo'/></a> <a href='https://github.com/anddago78'><img src='https://github.com/anddago78.png' width='32' height='32' style='border-radius:50%;' alt='anddago78'/></a> | Add a sequence field to projects, filled automatically
+[project_stage_mgmt](project_stage_mgmt/) | 15.0.1.0.0 | <a href='https://github.com/DavidJForgeFlow'><img src='https://github.com/DavidJForgeFlow.png' width='32' height='32' style='border-radius:50%;' alt='DavidJForgeFlow'/></a> | Allows to assign and create task stages on project creation wizard
+[project_status](project_status/) | 15.0.1.0.0 | <a href='https://github.com/patrickrwilson'><img src='https://github.com/patrickrwilson.png' width='32' height='32' style='border-radius:50%;' alt='patrickrwilson'/></a> | Project Status
+[project_stock](project_stock/) | 15.0.1.0.6 | <a href='https://github.com/victoralmau'><img src='https://github.com/victoralmau.png' width='32' height='32' style='border-radius:50%;' alt='victoralmau'/></a> | Project Stock
+[project_stock_product_set](project_stock_product_set/) | 15.0.1.0.2 | <a href='https://github.com/victoralmau'><img src='https://github.com/victoralmau.png' width='32' height='32' style='border-radius:50%;' alt='victoralmau'/></a> | Project Stock Product Set
+[project_stock_request](project_stock_request/) | 15.0.1.0.0 |  | Create stock requests from a projects and project tasks
+[project_task_add_very_high](project_task_add_very_high/) | 15.0.1.0.0 | <a href='https://github.com/astirpe'><img src='https://github.com/astirpe.png' width='32' height='32' style='border-radius:50%;' alt='astirpe'/></a> | Adds extra options 'High' and 'Very High' on tasks
+[project_task_code](project_task_code/) | 15.0.1.0.5 | <a href='https://github.com/luisg123v'><img src='https://github.com/luisg123v.png' width='32' height='32' style='border-radius:50%;' alt='luisg123v'/></a> | Sequential Code for Tasks
+[project_task_default_stage](project_task_default_stage/) | 15.0.1.0.1 |  | Recovery default task stages for projects from v8
+[project_task_dependency](project_task_dependency/) | 15.0.1.0.0 | <a href='https://github.com/astirpe'><img src='https://github.com/astirpe.png' width='32' height='32' style='border-radius:50%;' alt='astirpe'/></a> | Enables to define dependencies (other tasks) of a task
+[project_task_description_template](project_task_description_template/) | 15.0.1.0.0 |  | Add a description template to project tasks
+[project_task_material](project_task_material/) | 15.0.1.0.0 |  | Record products spent in a Task
+[project_task_milestone](project_task_milestone/) | 15.0.1.0.0 | <a href='https://github.com/mantux11'><img src='https://github.com/mantux11.png' width='32' height='32' style='border-radius:50%;' alt='mantux11'/></a> | Project Task Milestones
+[project_task_note](project_task_note/) | 15.0.1.0.0 | <a href='https://github.com/carolina-fernandez'><img src='https://github.com/carolina-fernandez.png' width='32' height='32' style='border-radius:50%;' alt='carolina-fernandez'/></a> | Add notes in project tasks
+[project_task_personal_stage_auto_fold](project_task_personal_stage_auto_fold/) | 15.0.1.0.3 |  | Moves task to the first fold personal stage when done
+[project_task_pull_request](project_task_pull_request/) | 15.0.1.0.1 |  | Adds a field for a PR URI to project tasks
+[project_task_required_project](project_task_required_project/) | 15.0.1.0.0 |  | Obligation to specify a project when creating/editing a task
+[project_task_stage_state](project_task_stage_state/) | 15.0.1.0.1 |  | Restore State attribute removed from Project Stages in 8.0
+[project_template](project_template/) | 15.0.1.0.0 | <a href='https://github.com/patrickrwilson'><img src='https://github.com/patrickrwilson.png' width='32' height='32' style='border-radius:50%;' alt='patrickrwilson'/></a> | Project Templates
+[project_template_milestone](project_template_milestone/) | 15.0.1.0.1 | <a href='https://github.com/patrickrwilson'><img src='https://github.com/patrickrwilson.png' width='32' height='32' style='border-radius:50%;' alt='patrickrwilson'/></a> | Adds function to copy of milestones when creating a project from template
+[project_timeline](project_timeline/) | 15.0.2.0.2 |  | Timeline view for projects
+[project_timeline_hr_timesheet](project_timeline_hr_timesheet/) | 15.0.1.0.0 |  | Shows the progress of tasks on the timeline view.
+[project_timesheet_time_control](project_timesheet_time_control/) | 15.0.1.1.1 | <a href='https://github.com/ernestotejeda'><img src='https://github.com/ernestotejeda.png' width='32' height='32' style='border-radius:50%;' alt='ernestotejeda'/></a> | Project timesheet time control
+[project_type](project_type/) | 15.0.1.0.1 |  | Project Types
+[project_wbs](project_wbs/) | 15.0.1.2.0 | <a href='https://github.com/AaronHForgeFlow'><img src='https://github.com/AaronHForgeFlow.png' width='32' height='32' style='border-radius:50%;' alt='AaronHForgeFlow'/></a> | Apply Work Breakdown Structure
+[sale_project_copy_tasks](sale_project_copy_tasks/) | 15.0.1.0.1 | <a href='https://github.com/shide'><img src='https://github.com/shide.png' width='32' height='32' style='border-radius:50%;' alt='shide'/></a> <a href='https://github.com/EmilioPascual'><img src='https://github.com/EmilioPascual.png' width='32' height='32' style='border-radius:50%;' alt='EmilioPascual'/></a> | Copy tasks into sale order's project
+
+[//]: # (end addons)
+
+<!-- prettier-ignore-end -->
+
+## Licenses
+
+This repository is licensed under [AGPL-3.0](LICENSE).
+
+However, each module can have a totally different license, as long as they adhere to Odoo Community Association (OCA)
+policy. Consult each module's `__manifest__.py` file, which contains a `license` key
+that explains its license.
+
+----
+OCA, or the [Odoo Community Association](http://odoo-community.org/), is a nonprofit
+organization whose mission is to support the collaborative development of Odoo features
+and promote its widespread use.

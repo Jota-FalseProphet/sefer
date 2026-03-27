@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Odoo 15",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/myvenv/bin/python",
+      "program": "${workspaceFolder}/odoo-bin",
+      "console": "integratedTerminal",
+      "args": [
+        "--conf=${workspaceFolder}/conf/odoo.conf",
+        "--dev=assets"
+      ],
+      "justMyCode": false
+    }
+  ]
+}
