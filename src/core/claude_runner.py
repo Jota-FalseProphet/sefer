@@ -18,7 +18,7 @@ async def run_claude_stream(prompt: str, session_id: str | None = None) -> Async
         "--output-format", "stream-json",
         "--verbose",
         "--model", settings.claude_model,
-        "--dangerously-skip-permissions",
+        "--allowedTools", "Read", "Glob", "Grep", "WebSearch", "WebFetch",
     ]
 
     if session_id:
