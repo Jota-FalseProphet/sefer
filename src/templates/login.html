@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sefer - Login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <h1 id="auth-title">Iniciar sesion</h1>
+            <p id="auth-subtitle">Accede a tu asistente Sefer</p>
+
+            <div class="auth-error" id="error-msg"></div>
+
+            <form id="auth-form">
+                <input type="email" id="email" placeholder="Email" required autocomplete="email">
+                <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+                <button type="submit" id="submit-btn">Entrar</button>
+            </form>
+
+            <div class="toggle">
+                <span id="toggle-text">No tienes cuenta? </span>
+                <a id="toggle-link" onclick="toggleMode()">Registrate</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+
+        function toggleMode() {
+            isLogin = !isLogin;
+            document.getElementById('auth-title').textContent = isLogin ? 'Iniciar sesion' : 'Registro';
+            document.getElementById('auth-subtitle').textContent = isLogin
+                ? 'Accede a tu asistente Odoo'
+                : 'Crea tu cuenta en Sefer';
+            document.getElementById('submit-btn').textContent = isLogin ? 'Entrar' : 'Registrarse';
+            document.getElementById('toggle-text').textContent = isLogin
+                ? 'No tienes cuenta? '
+                : 'Ya tienes cuenta? ';
+            document.getElementById('toggle-link').textContent = isLogin ? 'Registrate' : 'Inicia sesion';
+            document.getElementById('error-msg').style.display = 'none';
+        }
+
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('error-msg');
+            errorEl.style.display = 'none';
+
+            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    errorEl.textContent = data.detail || 'Error';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                if (isLogin) {
+                    localStorage.setItem('sefer_token', data.token);
+                    localStorage.setItem('sefer_email', data.email);
+                    window.location.href = '/';
+                } else {
+                    // Auto-login after register
+                    const loginRes = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password }),
+                    });
+                    const loginData = await loginRes.json();
+                    if (loginRes.ok) {
+                        localStorage.setItem('sefer_token', loginData.token);
+                        localStorage.setItem('sefer_email', loginData.email);
+                        window.location.href = '/';
+                    }
+                }
+            } catch (err) {
+                errorEl.textContent = 'Connection error';
+                errorEl.style.display = 'block';
+            }
+        });
+
+        // Redirect if already logged in
+        if (localStorage.getItem('sefer_token')) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

@@ -3,3 +3,13 @@ EpistolaGenesis/venv/
 
 # Módulos de terceros
 EpistolaGenesis/modulos/modulos-terceros/
+
+# Claude Code local config
+.claude/
+
+# Sefer runtime data
+data/
+logs/
+__pycache__/
+*.pyc
+.env
