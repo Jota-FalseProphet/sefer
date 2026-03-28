@@ -13,14 +13,30 @@
             <p id="auth-subtitle">Accede a tu asistente Sefer</p>
 
             <div class="auth-error" id="error-msg"></div>
+            <div class="auth-success" id="success-msg"></div>
 
+            <!-- Login / Register form -->
             <form id="auth-form">
                 <input type="email" id="email" placeholder="Email" required autocomplete="email">
                 <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+                <input type="password" id="password-confirm" placeholder="Confirmar password" required autocomplete="new-password" style="display:none;">
                 <button type="submit" id="submit-btn">Entrar</button>
             </form>
 
-            <div class="toggle">
+            <!-- Verification form (hidden by default) -->
+            <form id="verify-form" style="display:none;">
+                <p class="verify-hint">Introduce el codigo de 6 digitos que hemos enviado a <strong id="verify-email"></strong></p>
+                <input type="text" id="verify-code" placeholder="000000" maxlength="6"
+                       pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required
+                       style="text-align:center; font-size:1.5rem; letter-spacing:8px;">
+                <button type="submit" id="verify-btn">Verificar</button>
+                <div class="resend-row">
+                    <span class="text-muted">No te ha llegado?</span>
+                    <a id="resend-link" onclick="resendCode()">Reenviar codigo</a>
+                </div>
+            </form>
+
+            <div class="toggle" id="toggle-row">
                 <span id="toggle-text">No tienes cuenta? </span>
                 <a id="toggle-link" onclick="toggleMode()">Registrate</a>
             </div>
@@ -28,30 +44,75 @@
     </div>
 
     <script>
-        let isLogin = true;
+        let mode = 'login'; // login | register | verify
+        let pendingEmail = '';
 
-        function toggleMode() {
-            isLogin = !isLogin;
-            document.getElementById('auth-title').textContent = isLogin ? 'Iniciar sesion' : 'Registro';
-            document.getElementById('auth-subtitle').textContent = isLogin
-                ? 'Accede a tu asistente Odoo'
-                : 'Crea tu cuenta en Sefer';
-            document.getElementById('submit-btn').textContent = isLogin ? 'Entrar' : 'Registrarse';
-            document.getElementById('toggle-text').textContent = isLogin
-                ? 'No tienes cuenta? '
-                : 'Ya tienes cuenta? ';
-            document.getElementById('toggle-link').textContent = isLogin ? 'Registrate' : 'Inicia sesion';
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('success-msg').style.display = 'none';
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('success-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
             document.getElementById('error-msg').style.display = 'none';
         }
 
+        function hideMessages() {
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('success-msg').style.display = 'none';
+        }
+
+        function toggleMode() {
+            mode = mode === 'login' ? 'register' : 'login';
+            hideMessages();
+            const confirmField = document.getElementById('password-confirm');
+            confirmField.style.display = mode === 'register' ? 'block' : 'none';
+            confirmField.required = mode === 'register';
+            if (mode === 'login') confirmField.value = '';
+            document.getElementById('auth-title').textContent = mode === 'login' ? 'Iniciar sesion' : 'Registro';
+            document.getElementById('auth-subtitle').textContent = mode === 'login'
+                ? 'Accede a tu asistente Sefer'
+                : 'Crea tu cuenta en Sefer';
+            document.getElementById('submit-btn').textContent = mode === 'login' ? 'Entrar' : 'Registrarse';
+            document.getElementById('toggle-text').textContent = mode === 'login'
+                ? 'No tienes cuenta? '
+                : 'Ya tienes cuenta? ';
+            document.getElementById('toggle-link').textContent = mode === 'login' ? 'Registrate' : 'Inicia sesion';
+        }
+
+        function showVerifyForm(email) {
+            mode = 'verify';
+            pendingEmail = email;
+            document.getElementById('auth-form').style.display = 'none';
+            document.getElementById('verify-form').style.display = 'block';
+            document.getElementById('toggle-row').style.display = 'none';
+            document.getElementById('verify-email').textContent = email;
+            document.getElementById('auth-title').textContent = 'Verificacion';
+            document.getElementById('auth-subtitle').textContent = 'Revisa tu bandeja de entrada';
+            hideMessages();
+            document.getElementById('verify-code').focus();
+        }
+
+        // Auth form submit
         document.getElementById('auth-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            hideMessages();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('error-msg');
-            errorEl.style.display = 'none';
 
-            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+            if (mode === 'register') {
+                const confirm = document.getElementById('password-confirm').value;
+                if (password !== confirm) {
+                    showError('Las contraseñas no coinciden');
+                    return;
+                }
+            }
+
+            const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
 
             try {
                 const res = await fetch(endpoint, {
@@ -62,34 +123,80 @@
                 const data = await res.json();
 
                 if (!res.ok) {
-                    errorEl.textContent = data.detail || 'Error';
-                    errorEl.style.display = 'block';
+                    showError(data.detail || 'Error');
                     return;
                 }
 
-                if (isLogin) {
+                if (mode === 'login') {
                     localStorage.setItem('sefer_token', data.token);
                     localStorage.setItem('sefer_email', data.email);
                     window.location.href = '/';
                 } else {
-                    // Auto-login after register
-                    const loginRes = await fetch('/api/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password }),
-                    });
-                    const loginData = await loginRes.json();
-                    if (loginRes.ok) {
-                        localStorage.setItem('sefer_token', loginData.token);
-                        localStorage.setItem('sefer_email', loginData.email);
-                        window.location.href = '/';
-                    }
+                    // Registration OK -> show verify form
+                    showVerifyForm(email);
+                    showSuccess('Codigo enviado a tu email');
                 }
             } catch (err) {
-                errorEl.textContent = 'Connection error';
-                errorEl.style.display = 'block';
+                showError('Error de conexion');
             }
         });
+
+        // Verify form submit
+        document.getElementById('verify-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessages();
+            const code = document.getElementById('verify-code').value;
+
+            try {
+                const res = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingEmail, code }),
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showError(data.detail || 'Codigo invalido');
+                    return;
+                }
+
+                showSuccess('Cuenta verificada! Iniciando sesion...');
+
+                // Auto-login
+                const password = document.getElementById('password').value;
+                const loginRes = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingEmail, password }),
+                });
+                const loginData = await loginRes.json();
+                if (loginRes.ok) {
+                    localStorage.setItem('sefer_token', loginData.token);
+                    localStorage.setItem('sefer_email', loginData.email);
+                    setTimeout(() => { window.location.href = '/'; }, 500);
+                }
+            } catch (err) {
+                showError('Error de conexion');
+            }
+        });
+
+        async function resendCode() {
+            hideMessages();
+            try {
+                const res = await fetch('/api/auth/resend-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingEmail }),
+                });
+                if (res.ok) {
+                    showSuccess('Nuevo codigo enviado');
+                } else {
+                    showError('Error al reenviar. Intentalo de nuevo.');
+                }
+            } catch {
+                showError('Error de conexion');
+            }
+        }
 
         // Redirect if already logged in
         if (localStorage.getItem('sefer_token')) {

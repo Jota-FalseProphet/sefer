@@ -1,0 +1,11 @@
+EpistolaGenesis/
+data/
+logs/
+.env
+.git/
+.claude/
+**/__pycache__/
+**/*.pyc
+*.md
+specs/
+nginx/
