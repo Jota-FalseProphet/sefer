@@ -5,19 +5,25 @@ Streams results back as they arrive.
 
 import asyncio
 import json
+from pathlib import Path
 from typing import AsyncGenerator
 
 from src.config import settings
 from src.core.logging import claude_log
 
+SYSTEM_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "sefer_system.md"
+
 
 async def run_claude_stream(prompt: str, session_id: str | None = None) -> AsyncGenerator[dict, None]:
+    system_prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+
     cmd = [
         settings.claude_bin,
         "--print",
         "--output-format", "stream-json",
         "--verbose",
         "--model", settings.claude_model,
+        "--system-prompt", system_prompt,
         "--allowedTools", "Read", "Glob", "Grep", "WebSearch", "WebFetch",
     ]
 
