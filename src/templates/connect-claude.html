@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sefer - Conectar Claude</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box" style="max-width:480px;">
+            <h1 id="title">Conecta tu cuenta de Claude</h1>
+            <p id="subtitle">Para usar Sefer necesitas vincular tu cuenta de Claude</p>
+
+            <div class="auth-error" id="error-msg"></div>
+            <div class="auth-success" id="success-msg"></div>
+
+            <!-- Step 1: Start -->
+            <div id="step-start">
+                <p class="verify-hint">
+                    Sefer usa Claude Code para analizar tu entorno Odoo.
+                    Necesitas una cuenta de Claude (gratuita o de pago).
+                </p>
+                <button onclick="startOAuth()" id="oauth-btn">Iniciar sesion con Claude</button>
+            </div>
+
+            <!-- Step 2: OAuth started, paste code -->
+            <div id="step-code" style="display:none;">
+                <p class="verify-hint">
+                    1. Abre el enlace de abajo e inicia sesion con tu cuenta de Claude<br>
+                    2. Copia el codigo que te den<br>
+                    3. Pegalo aqui abajo
+                </p>
+                <a id="claude-url" href="#" target="_blank" class="claude-link">Abrir pagina de login de Claude</a>
+
+                <form id="code-form">
+                    <input type="text" id="code-input" placeholder="Pega aqui el codigo de autenticacion"
+                           style="font-size:0.85rem; font-family:monospace;" required>
+                    <button type="submit" id="code-btn">Conectar</button>
+                </form>
+            </div>
+
+            <!-- Step 3: Done -->
+            <div id="step-done" style="display:none;">
+                <p class="verify-hint" style="color:#22c55e; font-weight:600;">
+                    Cuenta de Claude conectada correctamente.
+                </p>
+                <button onclick="window.location.href='/'">Ir al chat</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = localStorage.getItem('sefer_token');
+        if (!TOKEN) window.location.href = '/login';
+
+        const headers = { 'Authorization': `Bearer ${TOKEN}` };
+
+        function showError(msg) {
+            document.getElementById('error-msg').textContent = msg;
+            document.getElementById('error-msg').style.display = 'block';
+            document.getElementById('success-msg').style.display = 'none';
+        }
+
+        function showSuccess(msg) {
+            document.getElementById('success-msg').textContent = msg;
+            document.getElementById('success-msg').style.display = 'block';
+            document.getElementById('error-msg').style.display = 'none';
+        }
+
+        // Check if already authenticated (one-time, no polling)
+        (async () => {
+            try {
+                const res = await fetch('/api/claude/check-auth', { headers });
+                if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+                const data = await res.json();
+                if (data.authenticated) window.location.href = '/';
+            } catch {}
+        })();
+
+        async function startOAuth() {
+            const btn = document.getElementById('oauth-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generando enlace...';
+
+            try {
+                const res = await fetch('/api/claude/start-login', {
+                    method: 'POST', headers,
+                });
+                if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showError(data.detail || 'Error al generar enlace');
+                    btn.disabled = false;
+                    btn.textContent = 'Iniciar sesion con Claude';
+                    return;
+                }
+
+                document.getElementById('claude-url').href = data.url;
+                document.getElementById('step-start').style.display = 'none';
+                document.getElementById('step-code').style.display = 'block';
+                document.getElementById('subtitle').textContent = 'Sigue los pasos para conectar tu cuenta';
+            } catch (err) {
+                showError('Error de conexion');
+                btn.disabled = false;
+                btn.textContent = 'Iniciar sesion con Claude';
+            }
+        }
+
+        document.getElementById('code-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('code-input').value.trim();
+            if (!code) return;
+
+            const btn = document.getElementById('code-btn');
+            btn.disabled = true;
+            btn.textContent = 'Verificando...';
+            document.getElementById('error-msg').style.display = 'none';
+
+            try {
+                const res = await fetch('/api/claude/submit-code', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code }),
+                });
+                if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+                const data = await res.json();
+
+                if (res.ok && data.authenticated) {
+                    document.getElementById('step-code').style.display = 'none';
+                    document.getElementById('step-done').style.display = 'block';
+                    document.getElementById('title').textContent = 'Listo!';
+                    document.getElementById('subtitle').textContent = '';
+                } else {
+                    showError(data.detail || 'Codigo invalido. Intentalo de nuevo.');
+                    btn.disabled = false;
+                    btn.textContent = 'Conectar';
+                }
+            } catch {
+                showError('Error de conexion');
+                btn.disabled = false;
+                btn.textContent = 'Conectar';
+            }
+        });
+    </script>
+</body>
+</html>

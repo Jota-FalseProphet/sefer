@@ -32,8 +32,7 @@ services:
       - db
     volumes:
       - ./EpistolaGenesis:/app/EpistolaGenesis:ro
-      - sefer-data:/app/data
-      - ./data/claude-home:/home/sefer/.claude
+      - ./data:/app/data
 
   nginx:
     image: nginx:alpine

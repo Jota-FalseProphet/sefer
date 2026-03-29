@@ -26,6 +26,11 @@ async def login_page():
     return FileResponse(str(templates_dir / "login.html"))
 
 
+@app.get("/connect-claude")
+async def connect_claude_page():
+    return FileResponse(str(templates_dir / "connect-claude.html"))
+
+
 @app.on_event("startup")
 async def startup():
     server_log.info("Sefer started on %s:%d", settings.host, settings.port)

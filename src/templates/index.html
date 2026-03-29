@@ -45,6 +45,18 @@
             window.location.href = '/login';
         }
 
+        // Validate session and Claude auth
+        (async () => {
+            try {
+                const res = await fetch('/api/claude/check-auth', {
+                    headers: { 'Authorization': `Bearer ${TOKEN}` },
+                });
+                if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+                const data = await res.json();
+                if (!data.authenticated) window.location.href = '/connect-claude';
+            } catch {}
+        })();
+
         document.getElementById('user-email').textContent = EMAIL || '';
 
         const chatArea = document.getElementById('chat-area');

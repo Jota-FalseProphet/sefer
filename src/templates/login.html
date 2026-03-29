@@ -19,7 +19,7 @@
             <form id="auth-form">
                 <input type="email" id="email" placeholder="Email" required autocomplete="email">
                 <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
-                <input type="password" id="password-confirm" placeholder="Confirmar password" required autocomplete="new-password" style="display:none;">
+                <input type="password" id="password-confirm" placeholder="Confirmar password" autocomplete="new-password" style="display:none;">
                 <button type="submit" id="submit-btn">Entrar</button>
             </form>
 
@@ -130,7 +130,7 @@
                 if (mode === 'login') {
                     localStorage.setItem('sefer_token', data.token);
                     localStorage.setItem('sefer_email', data.email);
-                    window.location.href = '/';
+                    window.location.href = data.claude_authenticated ? '/' : '/connect-claude';
                 } else {
                     // Registration OK -> show verify form
                     showVerifyForm(email);
@@ -173,7 +173,7 @@
                 if (loginRes.ok) {
                     localStorage.setItem('sefer_token', loginData.token);
                     localStorage.setItem('sefer_email', loginData.email);
-                    setTimeout(() => { window.location.href = '/'; }, 500);
+                    setTimeout(() => { window.location.href = '/connect-claude'; }, 500);
                 }
             } catch (err) {
                 showError('Error de conexion');

@@ -43,6 +43,7 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 verified BOOLEAN DEFAULT FALSE,
                 claude_authenticated BOOLEAN DEFAULT FALSE,
+                claude_api_key TEXT,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
@@ -112,7 +113,13 @@ def login(email: str, password: str) -> dict:
             (token, row["id"]),
         )
         conn.commit()
-        return {"ok": True, "token": token, "user_id": row["id"], "email": row["email"]}
+        return {
+            "ok": True,
+            "token": token,
+            "user_id": row["id"],
+            "email": row["email"],
+            "claude_authenticated": bool(row["claude_authenticated"]),
+        }
 
 
 def get_user_by_token(token: str) -> dict | None:
@@ -136,6 +143,26 @@ def set_claude_authenticated(user_id: int, value: bool = True):
         cur = conn.cursor()
         cur.execute("UPDATE users SET claude_authenticated = %s WHERE id = %s", (value, user_id))
         conn.commit()
+
+
+def save_claude_api_key(user_id: int, api_key: str):
+    init_db()
+    with _get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET claude_api_key = %s, claude_authenticated = TRUE WHERE id = %s",
+            (api_key, user_id),
+        )
+        conn.commit()
+
+
+def get_claude_api_key(user_id: int) -> str | None:
+    init_db()
+    with _get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT claude_api_key FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        return row[0] if row and row[0] else None
 
 
 def create_verification_code(email: str) -> str:
