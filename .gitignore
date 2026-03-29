@@ -6,6 +6,7 @@ EpistolaGenesis/modulos/modulos-terceros/
 
 # Claude Code local config
 .claude/
+CLAUDE.md
 
 # Python cache (everywhere)
 **/__pycache__/
