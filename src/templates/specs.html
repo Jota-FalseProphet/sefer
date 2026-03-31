@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sefer - Specs</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>Sefer</h1>
+            <nav class="nav">
+                <a href="/">Chat</a>
+                <a href="/specs" class="active">Specs</a>
+                <a href="/team">Equipo</a>
+            </nav>
+        </div>
+        <div class="user-info">
+            <span id="user-email"></span>
+            <button class="logout-btn" onclick="logout()">Salir</button>
+        </div>
+    </div>
+
+    <div class="page-content">
+    <div class="kanban-toolbar">
+        <div class="filters">
+            <select id="filter-priority" onchange="loadSpecs()">
+                <option value="">Prioridad</option>
+                <option value="critical">Critica</option>
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+            </select>
+            <select id="filter-dev" onchange="loadSpecs()">
+                <option value="">Desarrollador</option>
+            </select>
+        </div>
+        <button onclick="showNewSpecModal()">+ Nueva spec</button>
+    </div>
+
+    <div class="kanban-board" id="kanban-board">
+        <div class="kanban-column" data-status="draft">
+            <div class="kanban-column-header">Draft <span class="count" id="count-draft">0</span></div>
+            <div class="kanban-cards" id="col-draft"></div>
+        </div>
+        <div class="kanban-column" data-status="ready">
+            <div class="kanban-column-header">Ready <span class="count" id="count-ready">0</span></div>
+            <div class="kanban-cards" id="col-ready"></div>
+        </div>
+        <div class="kanban-column" data-status="in_progress">
+            <div class="kanban-column-header">In Progress <span class="count" id="count-in_progress">0</span></div>
+            <div class="kanban-cards" id="col-in_progress"></div>
+        </div>
+        <div class="kanban-column" data-status="review">
+            <div class="kanban-column-header">Review <span class="count" id="count-review">0</span></div>
+            <div class="kanban-cards" id="col-review"></div>
+        </div>
+        <div class="kanban-column" data-status="done">
+            <div class="kanban-column-header">Done <span class="count" id="count-done">0</span></div>
+            <div class="kanban-cards" id="col-done"></div>
+        </div>
+    </div>
+
+    </div><!-- .page-content -->
+
+    <!-- New spec modal -->
+    <div class="modal-overlay" id="new-spec-modal" style="display:none;">
+        <div class="modal">
+            <h2>Nueva spec</h2>
+            <input type="text" id="new-spec-title" placeholder="Titulo de la spec">
+            <select id="new-spec-priority" style="width:100%;padding:10px;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+                <option value="high">Alta</option>
+                <option value="critical">Critica</option>
+            </select>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn-confirm" onclick="createSpec()">Crear</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/chat-widget.js?v=2"></script>
+    <script>
+        const TOKEN = localStorage.getItem('sefer_token');
+        const EMAIL = localStorage.getItem('sefer_email');
+        if (!TOKEN) window.location.href = '/login';
+        document.getElementById('user-email').textContent = EMAIL || '';
+
+        const headers = { 'Authorization': `Bearer ${TOKEN}` };
+        let allSpecs = [];
+
+        async function loadSpecs() {
+            const res = await fetch('/api/specs', { headers });
+            if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+            allSpecs = await res.json();
+            renderBoard();
+        }
+
+        function renderBoard() {
+            const statuses = ['draft', 'ready', 'in_progress', 'review', 'done'];
+            for (const st of statuses) {
+                const col = document.getElementById(`col-${st}`);
+                const filtered = allSpecs.filter(s => s.status === st);
+
+                const priority = document.getElementById('filter-priority').value;
+                const dev = document.getElementById('filter-dev').value;
+                const specs = filtered.filter(s => {
+                    if (priority && s.priority !== priority) return false;
+                    if (dev && s.assigned_to != dev) return false;
+                    return true;
+                });
+
+                document.getElementById(`count-${st}`).textContent = specs.length;
+                col.innerHTML = specs.map(s => renderCard(s)).join('');
+            }
+            setupDragAndDrop();
+        }
+
+        function renderCard(spec) {
+            const tags = (spec.tags || []).map((t, i) => {
+                const color = spec.tag_colors?.[i] || '#888';
+                return `<span class="kanban-tag" style="background:${color}">${t}</span>`;
+            }).join('');
+            return `
+                <div class="kanban-card" draggable="true" data-id="${spec.id}">
+                    <div class="kanban-card-title">
+                        <a href="/specs/${spec.id}">${escapeHtml(spec.title)}</a>
+                    </div>
+                    <div class="kanban-card-meta">
+                        <span class="priority-dot ${spec.priority}"></span>
+                        ${tags}
+                        ${spec.dev_name ? `<span class="kanban-dev">${escapeHtml(spec.dev_name)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupDragAndDrop() {
+            document.querySelectorAll('.kanban-card').forEach(card => {
+                card.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('text/plain', card.dataset.id);
+                    card.classList.add('dragging');
+                });
+                card.addEventListener('dragend', () => card.classList.remove('dragging'));
+            });
+
+            document.querySelectorAll('.kanban-cards').forEach(col => {
+                col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+                col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+                col.addEventListener('drop', async e => {
+                    e.preventDefault();
+                    col.classList.remove('drag-over');
+                    const specId = e.dataTransfer.getData('text/plain');
+                    const newStatus = col.id.replace('col-', '');
+                    await fetch(`/api/specs/${specId}/move`, {
+                        method: 'PUT',
+                        headers: { ...headers, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus }),
+                    });
+                    loadSpecs();
+                });
+            });
+        }
+
+        function showNewSpecModal() {
+            document.getElementById('new-spec-modal').style.display = 'flex';
+            document.getElementById('new-spec-title').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('new-spec-modal').style.display = 'none';
+        }
+
+        async function createSpec() {
+            const title = document.getElementById('new-spec-title').value.trim();
+            if (!title) return;
+            const priority = document.getElementById('new-spec-priority').value;
+            await fetch('/api/specs', {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, priority }),
+            });
+            closeModal();
+            document.getElementById('new-spec-title').value = '';
+            loadSpecs();
+        }
+
+        async function loadDevFilter() {
+            const res = await fetch('/api/developers', { headers });
+            if (!res.ok) return;
+            const devs = await res.json();
+            const sel = document.getElementById('filter-dev');
+            devs.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                sel.appendChild(opt);
+            });
+        }
+
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function logout() { localStorage.clear(); window.location.href = '/login'; }
+
+        loadDevFilter();
+        loadSpecs();
+    </script>
+</body>
+</html>

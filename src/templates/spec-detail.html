@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sefer - Spec</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>Sefer</h1>
+            <nav class="nav">
+                <a href="/">Chat</a>
+                <a href="/specs" class="active">Specs</a>
+                <a href="/team">Equipo</a>
+            </nav>
+        </div>
+        <div class="user-info">
+            <span id="user-email"></span>
+            <button class="logout-btn" onclick="logout()">Salir</button>
+        </div>
+    </div>
+
+    <div class="spec-container">
+        <div class="spec-main">
+            <input type="text" class="spec-title-input" id="spec-title" placeholder="Titulo de la spec">
+            <textarea class="spec-editor" id="spec-content" placeholder="Escribe la spec en markdown..."></textarea>
+        </div>
+        <div class="spec-sidebar">
+            <div class="sidebar-section">
+                <label>Estado</label>
+                <select id="spec-status">
+                    <option value="draft">Draft</option>
+                    <option value="ready">Ready</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="review">Review</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+            <div class="sidebar-section">
+                <label>Prioridad</label>
+                <select id="spec-priority">
+                    <option value="low">Baja</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                    <option value="critical">Critica</option>
+                </select>
+            </div>
+            <div class="sidebar-section">
+                <label>Asignado a</label>
+                <select id="spec-assigned">
+                    <option value="">Sin asignar</option>
+                </select>
+            </div>
+            <div class="sidebar-section">
+                <label>Tags</label>
+                <div id="tags-container"></div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <input type="text" id="new-tag" placeholder="Nuevo tag" style="flex:1;">
+                    <button onclick="addTag()" style="padding:6px 12px;background:var(--accent-dim);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">+</button>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <label>Creado</label>
+                <span id="spec-created" style="font-size:0.85rem;color:var(--text-muted);"></span>
+            </div>
+            <div class="sidebar-actions">
+                <button class="btn-save" onclick="saveSpec()">Guardar</button>
+                <a href="/" class="secondary-btn" style="text-align:center;text-decoration:none;">Consultar con Sefer</a>
+                <button class="btn-delete" onclick="deleteSpec()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/chat-widget.js?v=2"></script>
+    <script>
+        const TOKEN = localStorage.getItem('sefer_token');
+        const EMAIL = localStorage.getItem('sefer_email');
+        if (!TOKEN) window.location.href = '/login';
+        document.getElementById('user-email').textContent = EMAIL || '';
+
+        const headers = { 'Authorization': `Bearer ${TOKEN}` };
+        const specId = window.location.pathname.split('/').pop();
+        let allTags = [];
+        let specTags = [];
+
+        async function loadSpec() {
+            const [specRes, devsRes, tagsRes] = await Promise.all([
+                fetch(`/api/specs/${specId}`, { headers }),
+                fetch('/api/developers', { headers }),
+                fetch('/api/tags', { headers }),
+            ]);
+            if (specRes.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+            if (specRes.status === 404) { window.location.href = '/specs'; return; }
+
+            const spec = await specRes.json();
+            const devs = await devsRes.json();
+            allTags = await tagsRes.json();
+            specTags = (spec.tags || []).map(t => t.id);
+
+            document.getElementById('spec-title').value = spec.title || '';
+            document.getElementById('spec-content').value = spec.content || '';
+            document.getElementById('spec-status').value = spec.status;
+            document.getElementById('spec-priority').value = spec.priority;
+            document.getElementById('spec-created').textContent = new Date(spec.created_at).toLocaleDateString();
+
+            // Devs dropdown
+            const sel = document.getElementById('spec-assigned');
+            devs.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                sel.appendChild(opt);
+            });
+            if (spec.assigned_to) sel.value = spec.assigned_to;
+
+            renderTags();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tags-container');
+            container.innerHTML = allTags.map(t => {
+                const checked = specTags.includes(t.id) ? 'checked' : '';
+                return `<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;margin-bottom:4px;cursor:pointer;">
+                    <input type="checkbox" value="${t.id}" ${checked} onchange="toggleTag(${t.id})">
+                    <span class="kanban-tag" style="background:${t.color}">${t.name}</span>
+                </label>`;
+            }).join('');
+        }
+
+        function toggleTag(tagId) {
+            if (specTags.includes(tagId)) {
+                specTags = specTags.filter(id => id !== tagId);
+            } else {
+                specTags.push(tagId);
+            }
+        }
+
+        async function addTag() {
+            const name = document.getElementById('new-tag').value.trim();
+            if (!name) return;
+            const res = await fetch('/api/tags', {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            if (res.ok) {
+                const tag = await res.json();
+                allTags.push(tag);
+                specTags.push(tag.id);
+                document.getElementById('new-tag').value = '';
+                renderTags();
+            }
+        }
+
+        async function saveSpec() {
+            const body = {
+                title: document.getElementById('spec-title').value,
+                content: document.getElementById('spec-content').value,
+                status: document.getElementById('spec-status').value,
+                priority: document.getElementById('spec-priority').value,
+                assigned_to: document.getElementById('spec-assigned').value || null,
+            };
+            await fetch(`/api/specs/${specId}`, {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            await fetch(`/api/specs/${specId}/tags`, {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag_ids: specTags }),
+            });
+            window.location.href = '/specs';
+        }
+
+        async function deleteSpec() {
+            if (!confirm('Eliminar esta spec?')) return;
+            await fetch(`/api/specs/${specId}`, { method: 'DELETE', headers });
+            window.location.href = '/specs';
+        }
+
+        function logout() { localStorage.clear(); window.location.href = '/login'; }
+        loadSpec();
+    </script>
+</body>
+</html>

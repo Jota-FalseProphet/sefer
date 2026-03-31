@@ -14,6 +14,11 @@ from src.core.claude_runner import (
     run_claude_stream, start_claude_login,
     submit_oauth_code, check_claude_auth,
 )
+from src.core.specs import (
+    list_conversations, create_conversation, update_conversation,
+    delete_conversation, get_conversation_by_session,
+    build_chat_context, save_message, get_messages,
+)
 from src.core.logging import server_log
 
 router = APIRouter(prefix="/api")
@@ -43,10 +48,16 @@ class ResendCodeRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
+    conversation_id: int | None = None
 
 
 class OAuthCodeRequest(BaseModel):
     code: str
+
+
+class ConversationUpdate(BaseModel):
+    title: str | None = None
+    context: str | None = None
 
 
 # --- Auth helpers ---
@@ -156,6 +167,43 @@ async def api_claude_check_auth(request: Request):
     return {"authenticated": authenticated}
 
 
+# --- Conversations ---
+
+@router.get("/conversations")
+async def api_list_conversations(request: Request):
+    user = _get_user(request)
+    return list_conversations(user["id"])
+
+
+@router.post("/conversations")
+async def api_create_conversation(request: Request):
+    user = _get_user(request)
+    return create_conversation(user["id"])
+
+
+@router.put("/conversations/{conv_id}")
+async def api_update_conversation(conv_id: int, body: ConversationUpdate, request: Request):
+    _get_user(request)
+    result = update_conversation(conv_id, **body.model_dump(exclude_none=True))
+    if not result:
+        raise HTTPException(404, "Conversation not found")
+    return result
+
+
+@router.get("/conversations/{conv_id}/messages")
+async def api_get_messages(conv_id: int, request: Request):
+    _get_user(request)
+    return get_messages(conv_id)
+
+
+@router.delete("/conversations/{conv_id}")
+async def api_delete_conversation(conv_id: int, request: Request):
+    _get_user(request)
+    if not delete_conversation(conv_id):
+        raise HTTPException(404, "Conversation not found")
+    return {"ok": True}
+
+
 # --- Chat ---
 
 @router.post("/chat")
@@ -167,9 +215,59 @@ async def api_chat(body: ChatRequest, request: Request):
 
     server_log.info("Chat from %s: %s", user["email"], body.message[:100])
 
+    # Build dynamic context with current specs/devs state
+    conv_context = None
+    if body.conversation_id:
+        from src.core.specs import get_conversation_by_session
+        # We'll look up context from DB if conversation has custom context
+        pass
+    dynamic_context = build_chat_context(conv_context)
+
+    # Auto-title: use first 50 chars of first message as title
+    auto_title = body.message[:50].strip()
+
     async def event_stream():
-        async for event in run_claude_stream(body.message, body.session_id, user_id=user["id"]):
+        conv_id = None
+        assistant_parts = []
+
+        async for event in run_claude_stream(
+            body.message,
+            body.session_id,
+            user_id=user["id"],
+            dynamic_context=dynamic_context,
+        ):
+            # Capture session_id and create/update conversation
+            if event.get("type") == "system" and event.get("subtype") == "init":
+                session_id = event.get("session_id")
+                if not body.session_id and session_id:
+                    conv = create_conversation(user["id"], title=auto_title, session_id=session_id)
+                    conv_id = conv["id"]
+                elif body.session_id:
+                    existing = get_conversation_by_session(body.session_id)
+                    if existing:
+                        conv_id = existing["id"]
+                        update_conversation(conv_id, title=existing["title"])
+                event["conversation_id"] = conv_id
+
+                # Save user message
+                if conv_id:
+                    save_message(conv_id, "user", body.message)
+
+            # Collect assistant text
+            if event.get("type") == "assistant":
+                for block in event.get("message", {}).get("content", []):
+                    if block.get("type") == "text":
+                        assistant_parts.append(block["text"])
+            elif event.get("type") == "result" and event.get("result"):
+                if not assistant_parts:
+                    assistant_parts.append(event["result"])
+
             yield f"data: {json.dumps(event)}\n\n"
+
+        # Save assistant response
+        if conv_id and assistant_parts:
+            save_message(conv_id, "assistant", "".join(assistant_parts))
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

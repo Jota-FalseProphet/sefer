@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sefer - Equipo</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>Sefer</h1>
+            <nav class="nav">
+                <a href="/">Chat</a>
+                <a href="/specs">Specs</a>
+                <a href="/team" class="active">Equipo</a>
+            </nav>
+        </div>
+        <div class="user-info">
+            <span id="user-email"></span>
+            <button class="logout-btn" onclick="logout()">Salir</button>
+        </div>
+    </div>
+
+    <div class="page-content">
+    <div class="team-container">
+        <div class="team-header">
+            <h2>Desarrolladores</h2>
+            <button onclick="showAddModal()" style="padding:8px 16px;background:var(--accent-dim);color:white;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;">+ Añadir dev</button>
+        </div>
+        <div class="dev-grid" id="dev-grid"></div>
+    </div>
+
+    </div><!-- .page-content -->
+
+    <!-- Add/Edit modal -->
+    <div class="modal-overlay" id="dev-modal" style="display:none;">
+        <div class="modal">
+            <h2 id="modal-title">Añadir desarrollador</h2>
+            <input type="hidden" id="dev-id">
+            <input type="text" id="dev-name" placeholder="Nombre">
+            <input type="email" id="dev-email" placeholder="Email">
+            <textarea id="dev-skills" placeholder="Habilidades (ej: Python, Odoo, frontend React...)"></textarea>
+            <textarea id="dev-notes" placeholder="Notas (ej: horarios, disponibilidad, preferencias...)"></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn-confirm" onclick="saveDev()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/chat-widget.js?v=2"></script>
+    <script>
+        const TOKEN = localStorage.getItem('sefer_token');
+        const EMAIL = localStorage.getItem('sefer_email');
+        if (!TOKEN) window.location.href = '/login';
+        document.getElementById('user-email').textContent = EMAIL || '';
+
+        const headers = { 'Authorization': `Bearer ${TOKEN}` };
+
+        async function loadDevs() {
+            const res = await fetch('/api/developers', { headers });
+            if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+            const devs = await res.json();
+            const grid = document.getElementById('dev-grid');
+            grid.innerHTML = devs.map(d => `
+                <div class="dev-card">
+                    <h3>${escapeHtml(d.name)}</h3>
+                    <div class="dev-email">${escapeHtml(d.email || '')}</div>
+                    ${d.skills ? `<div class="dev-skills">${escapeHtml(d.skills)}</div>` : ''}
+                    ${d.notes ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">${escapeHtml(d.notes)}</div>` : ''}
+                    <div class="dev-actions">
+                        <button onclick="editDev(${d.id}, '${escapeAttr(d.name)}', '${escapeAttr(d.email||'')}', '${escapeAttr(d.skills||'')}', '${escapeAttr(d.notes||'')}')">Editar</button>
+                        <button onclick="deleteDev(${d.id})">Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+            if (devs.length === 0) {
+                grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;">No hay desarrolladores. Añade uno para empezar.</p>';
+            }
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Añadir desarrollador';
+            document.getElementById('dev-id').value = '';
+            document.getElementById('dev-name').value = '';
+            document.getElementById('dev-email').value = '';
+            document.getElementById('dev-skills').value = '';
+            document.getElementById('dev-notes').value = '';
+            document.getElementById('dev-modal').style.display = 'flex';
+            document.getElementById('dev-name').focus();
+        }
+
+        function editDev(id, name, email, skills, notes) {
+            document.getElementById('modal-title').textContent = 'Editar desarrollador';
+            document.getElementById('dev-id').value = id;
+            document.getElementById('dev-name').value = name;
+            document.getElementById('dev-email').value = email;
+            document.getElementById('dev-skills').value = skills;
+            document.getElementById('dev-notes').value = notes;
+            document.getElementById('dev-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('dev-modal').style.display = 'none';
+        }
+
+        async function saveDev() {
+            const id = document.getElementById('dev-id').value;
+            const body = {
+                name: document.getElementById('dev-name').value.trim(),
+                email: document.getElementById('dev-email').value.trim() || null,
+                skills: document.getElementById('dev-skills').value.trim() || null,
+                notes: document.getElementById('dev-notes').value.trim() || null,
+            };
+            if (!body.name) return;
+
+            if (id) {
+                await fetch(`/api/developers/${id}`, {
+                    method: 'PUT',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+            } else {
+                await fetch('/api/developers', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+            }
+            closeModal();
+            loadDevs();
+        }
+
+        async function deleteDev(id) {
+            if (!confirm('Eliminar este desarrollador?')) return;
+            await fetch(`/api/developers/${id}`, { method: 'DELETE', headers });
+            loadDevs();
+        }
+
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function escapeAttr(t) { return (t || '').replace(/'/g, "\\'").replace(/\n/g, ' '); }
+        function logout() { localStorage.clear(); window.location.href = '/login'; }
+
+        loadDevs();
+    </script>
+</body>
+</html>

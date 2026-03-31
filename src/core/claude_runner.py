@@ -215,6 +215,7 @@ async def run_claude_stream(
     prompt: str,
     session_id: str | None = None,
     user_id: int | None = None,
+    dynamic_context: str | None = None,
 ) -> AsyncGenerator[dict, None]:
     system_prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
 
@@ -227,6 +228,9 @@ async def run_claude_stream(
         "--system-prompt", system_prompt,
         "--allowedTools", "Read", "Glob", "Grep", "WebSearch", "WebFetch",
     ]
+
+    if dynamic_context:
+        cmd.extend(["--append-system-prompt", dynamic_context])
 
     if session_id:
         cmd.extend(["--resume", session_id])

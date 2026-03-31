@@ -4,36 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sefer</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
     <div class="header">
-        <h1>Sefer</h1>
+        <div class="header-left">
+            <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">&#9776;</button>
+            <h1>Sefer</h1>
+            <nav class="nav">
+                <a href="/" class="active">Chat</a>
+                <a href="/specs">Specs</a>
+                <a href="/team">Equipo</a>
+            </nav>
+        </div>
         <div class="user-info">
             <span id="user-email"></span>
             <button class="logout-btn" onclick="logout()">Salir</button>
         </div>
     </div>
 
-    <div class="chat-area" id="chat-area">
-        <div class="message assistant">
-            Hola! Soy Sefer, tu asistente para Odoo. Preguntame lo que necesites.
+    <div class="chat-layout">
+        <!-- Sidebar -->
+        <div class="chat-sidebar" id="chat-sidebar">
+            <button class="new-chat-btn" onclick="newChat()">+ Nuevo chat</button>
+            <div class="chat-list" id="chat-list"></div>
         </div>
-    </div>
 
-    <div class="typing-indicator" id="typing">
-        <span class="typing-text">Pensando</span><span>.</span><span>.</span><span>.</span>
-    </div>
+        <!-- Main chat -->
+        <div class="chat-main">
+            <div class="chat-area" id="chat-area">
+                <div class="message assistant">
+                    Hola! Soy Sefer, tu asistente para Odoo. Preguntame lo que necesites.
+                </div>
+            </div>
 
-    <div class="input-area">
-        <div class="input-wrapper">
-            <textarea
-                id="msg-input"
-                placeholder="Escribe tu pregunta..."
-                rows="1"
-                autofocus
-            ></textarea>
-            <button id="send-btn" onclick="sendMessage()">&#9654;</button>
+            <div class="typing-indicator" id="typing">
+                <span class="typing-text">Pensando</span><span>.</span><span>.</span><span>.</span>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea id="msg-input" placeholder="Escribe tu pregunta..." rows="1" autofocus></textarea>
+                    <button id="send-btn" onclick="sendMessage()">&#9654;</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -41,9 +55,7 @@
         const TOKEN = localStorage.getItem('sefer_token');
         const EMAIL = localStorage.getItem('sefer_email');
 
-        if (!TOKEN) {
-            window.location.href = '/login';
-        }
+        if (!TOKEN) window.location.href = '/login';
 
         // Validate session and Claude auth
         (async () => {
@@ -63,10 +75,101 @@
         const msgInput = document.getElementById('msg-input');
         const sendBtn = document.getElementById('send-btn');
         const typingEl = document.getElementById('typing');
-        const typingText = document.querySelector('.typing-text');
+        const typingText = typingEl.querySelector('.typing-text');
+        const headers = { 'Authorization': `Bearer ${TOKEN}` };
 
-        let currentSessionId = null;
+        let currentSessionId = localStorage.getItem('sefer_session_id') || null;
+        let currentConvId = localStorage.getItem('sefer_conv_id') || null;
 
+        // Restore active conversation on page load
+        if (currentConvId) {
+            resumeChat(currentSessionId, parseInt(currentConvId));
+        }
+
+        // Sidebar toggle
+        document.getElementById('sidebar-toggle').addEventListener('click', () => {
+            document.getElementById('chat-sidebar').classList.toggle('collapsed');
+        });
+
+        // --- Sidebar ---
+        async function loadConversations() {
+            const res = await fetch('/api/conversations', { headers });
+            if (!res.ok) return;
+            const convs = await res.json();
+            const list = document.getElementById('chat-list');
+
+            // Group by date
+            const today = new Date().toDateString();
+            const yesterday = new Date(Date.now() - 86400000).toDateString();
+            const groups = {};
+
+            for (const c of convs) {
+                const d = new Date(c.created_at).toDateString();
+                const label = d === today ? 'Hoy' : d === yesterday ? 'Ayer' : new Date(c.created_at).toLocaleDateString();
+                if (!groups[label]) groups[label] = [];
+                groups[label].push(c);
+            }
+
+            list.innerHTML = '';
+            for (const [label, items] of Object.entries(groups)) {
+                list.innerHTML += `<div class="chat-list-date">${label}</div>`;
+                for (const c of items) {
+                    const active = c.session_id === currentSessionId ? 'active' : '';
+                    list.innerHTML += `
+                        <div class="chat-list-item ${active}" onclick="resumeChat('${c.session_id}', ${c.id})" data-id="${c.id}">
+                            <span class="chat-list-title">${escapeHtml(c.title || 'Sin titulo')}</span>
+                            <button class="chat-list-delete" onclick="event.stopPropagation(); deleteConv(${c.id})" title="Eliminar">&times;</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function newChat() {
+            currentSessionId = null;
+            currentConvId = null;
+            localStorage.removeItem('sefer_session_id');
+            localStorage.removeItem('sefer_conv_id');
+            chatArea.innerHTML = '<div class="message assistant">Hola! Soy Sefer. Preguntame lo que necesites.</div>';
+            loadConversations();
+        }
+
+        async function resumeChat(sessionId, convId) {
+            currentSessionId = sessionId;
+            currentConvId = convId;
+            localStorage.setItem('sefer_session_id', sessionId || '');
+            localStorage.setItem('sefer_conv_id', convId || '');
+            chatArea.innerHTML = '';
+
+            // Load previous messages
+            try {
+                const res = await fetch(`/api/conversations/${convId}/messages`, { headers });
+                if (res.ok) {
+                    const messages = await res.json();
+                    for (const msg of messages) {
+                        const div = document.createElement('div');
+                        div.className = `message ${msg.role}`;
+                        div.textContent = msg.content;
+                        chatArea.appendChild(div);
+                    }
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                }
+            } catch {}
+
+            if (chatArea.children.length === 0) {
+                chatArea.innerHTML = '<div class="message assistant" style="color:var(--text-muted);">Chat vacio</div>';
+            }
+
+            loadConversations();
+        }
+
+        async function deleteConv(convId) {
+            await fetch(`/api/conversations/${convId}`, { method: 'DELETE', headers });
+            if (currentConvId === convId) newChat();
+            loadConversations();
+        }
+
+        // --- Chat ---
         msgInput.addEventListener('input', () => {
             msgInput.style.height = 'auto';
             msgInput.style.height = Math.min(msgInput.scrollHeight, 200) + 'px';
@@ -82,11 +185,8 @@
         function addMessage(text, role) {
             const div = document.createElement('div');
             div.className = `message ${role}`;
-            if (role === 'assistant') {
-                div.innerHTML = '';
-            } else {
-                div.textContent = text;
-            }
+            if (role === 'assistant') div.innerHTML = '';
+            else div.textContent = text;
             chatArea.appendChild(div);
             chatArea.scrollTop = chatArea.scrollHeight;
             return div;
@@ -116,21 +216,15 @@
             try {
                 const res = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${TOKEN}`,
-                    },
+                    headers: { ...headers, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: text,
                         session_id: currentSessionId,
+                        conversation_id: currentConvId,
                     }),
                 });
 
-                if (res.status === 401) {
-                    localStorage.clear();
-                    window.location.href = '/login';
-                    return;
-                }
+                if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
 
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
@@ -162,11 +256,22 @@
             setTyping(false);
             sendBtn.disabled = false;
             msgInput.focus();
+
+            // Process spec blocks and actions
+            const fullText = textParts.join('');
+            processSpecBlocks(fullText, assistantDiv);
+            processActions(fullText, assistantDiv);
+
+            // Refresh sidebar
+            loadConversations();
         }
 
         function handleStreamEvent(event, div, textParts, toolsUsed) {
             if (event.type === 'system' && event.subtype === 'init') {
                 currentSessionId = event.session_id;
+                if (event.conversation_id) currentConvId = event.conversation_id;
+                localStorage.setItem('sefer_session_id', currentSessionId || '');
+                localStorage.setItem('sefer_conv_id', currentConvId || '');
             }
 
             if (event.type === 'assistant') {
@@ -184,9 +289,7 @@
                     }
                 }
             } else if (event.type === 'result') {
-                if (event.session_id) {
-                    currentSessionId = event.session_id;
-                }
+                if (event.session_id) currentSessionId = event.session_id;
                 if (event.result && textParts.length === 0) {
                     textParts.push(event.result);
                     renderAssistant(div, textParts, toolsUsed);
@@ -197,55 +300,104 @@
                 div.textContent = event.error || 'Error desconocido';
                 setTyping(false);
             }
-
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
         function renderAssistant(div, textParts, toolsUsed) {
             let html = '';
-
             if (toolsUsed.length > 0) {
                 html += '<div class="tools-used">';
-                for (const tool of toolsUsed) {
-                    html += `<span class="tool-badge">${escapeHtml(tool)}</span>`;
-                }
+                for (const tool of toolsUsed) html += `<span class="tool-badge">${escapeHtml(tool)}</span>`;
                 html += '</div>';
             }
-
             html += escapeHtml(textParts.join(''));
             div.innerHTML = html;
         }
 
-        function getToolLabel(name, input) {
-            const labels = {
-                'Read': 'Leyendo archivo',
-                'Bash': 'Ejecutando comando',
-                'Grep': 'Buscando en codigo',
-                'Glob': 'Buscando archivos',
-                'Write': 'Escribiendo archivo',
-                'Edit': 'Editando archivo',
+        // --- Spec block detection ---
+        function processSpecBlocks(text, div) {
+            const match = text.match(/```sefer-spec\n([\s\S]*?)```/);
+            if (!match) return;
+            const block = match[1];
+            const headerEnd = block.indexOf('---');
+            if (headerEnd < 0) return;
+            const headerLines = block.substring(0, headerEnd).trim().split('\n');
+            const content = block.substring(headerEnd + 3).trim();
+            let title = '', priority = 'medium';
+            for (const line of headerLines) {
+                if (line.startsWith('title:')) title = line.substring(6).trim();
+                if (line.startsWith('priority:')) priority = line.substring(9).trim();
+            }
+            if (!title) return;
+            const btn = document.createElement('button');
+            btn.textContent = 'Guardar como spec';
+            btn.className = 'action-btn';
+            btn.onclick = async () => {
+                const res = await fetch('/api/specs', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, priority, chat_session_id: currentSessionId }),
+                });
+                if (res.ok) { btn.textContent = 'Spec guardada'; btn.disabled = true; btn.classList.add('success'); }
             };
+            div.appendChild(btn);
+        }
+
+        // --- Action block detection ---
+        function processActions(text, div) {
+            const regex = /```sefer-action\n([\s\S]*?)```/g;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const lines = match[1].trim().split('\n');
+                const action = {};
+                for (const line of lines) {
+                    const [key, ...val] = line.split(':');
+                    if (key && val.length) action[key.trim()] = val.join(':').trim();
+                }
+                executeAction(action, div);
+            }
+        }
+
+        async function executeAction(action, div) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'action-status';
+            div.appendChild(statusDiv);
+
+            try {
+                if (action.action === 'move_spec') {
+                    const res = await fetch(`/api/specs/${action.spec_id}/move`, {
+                        method: 'PUT',
+                        headers: { ...headers, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: action.status }),
+                    });
+                    statusDiv.textContent = res.ok ? `Spec movida a ${action.status}` : 'Error al mover spec';
+                    statusDiv.classList.add(res.ok ? 'success' : 'error');
+                } else if (action.action === 'assign_spec') {
+                    const res = await fetch(`/api/specs/${action.spec_id}/assign`, {
+                        method: 'PUT',
+                        headers: { ...headers, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ developer_id: parseInt(action.developer_id) }),
+                    });
+                    statusDiv.textContent = res.ok ? 'Spec asignada' : 'Error al asignar spec';
+                    statusDiv.classList.add(res.ok ? 'success' : 'error');
+                }
+            } catch {
+                statusDiv.textContent = 'Error de conexion';
+                statusDiv.classList.add('error');
+            }
+        }
+
+        function getToolLabel(name, input) {
+            const labels = { 'Read': 'Leyendo archivo', 'Grep': 'Buscando en codigo', 'Glob': 'Buscando archivos' };
             let label = labels[name] || name;
-            if (name === 'Read' && input?.file_path) {
-                const short = input.file_path.split(/[/\\]/).pop();
-                label += `: ${short}`;
-            }
-            if (name === 'Bash' && input?.description) {
-                label = input.description;
-            }
+            if (name === 'Read' && input?.file_path) label += `: ${input.file_path.split(/[/\\]/).pop()}`;
             return label;
         }
 
-        function escapeHtml(text) {
-            const d = document.createElement('div');
-            d.textContent = text;
-            return d.innerHTML;
-        }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function logout() { localStorage.clear(); window.location.href = '/login'; }
 
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/login';
-        }
+        loadConversations();
     </script>
 </body>
 </html>
