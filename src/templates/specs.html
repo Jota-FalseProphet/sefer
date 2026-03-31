@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+<script>if(localStorage.getItem('sefer_theme')==='light')document.documentElement.setAttribute('data-theme','light')</script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sefer - Specs</title>
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
     <div class="header">
@@ -16,9 +17,25 @@
                 <a href="/team">Equipo</a>
             </nav>
         </div>
-        <div class="user-info">
-            <span id="user-email"></span>
-            <button class="logout-btn" onclick="logout()">Salir</button>
+        <div class="user-menu-wrapper">
+            <button class="user-menu-btn" id="user-menu-btn">
+                <span class="user-avatar" id="user-avatar"></span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>
+            </button>
+            <div class="user-menu" id="user-menu">
+                <div class="user-menu-header">
+                    <div class="user-menu-email" id="user-menu-email"></div>
+                </div>
+                <div class="user-menu-divider"></div>
+                <button class="user-menu-item" id="theme-toggle">
+                    <span id="theme-icon">&#9789;</span>
+                    <span id="theme-label">Tema claro</span>
+                </button>
+                <div class="user-menu-divider"></div>
+                <button class="user-menu-item user-menu-logout" onclick="logout()">
+                    Cerrar sesion
+                </button>
+            </div>
         </div>
     </div>
 
@@ -82,12 +99,32 @@
         </div>
     </div>
 
-    <script src="/static/chat-widget.js?v=2"></script>
+    <script src="/static/chat-widget.js?v=3"></script>
     <script>
         const TOKEN = localStorage.getItem('sefer_token');
         const EMAIL = localStorage.getItem('sefer_email');
         if (!TOKEN) window.location.href = '/login';
-        document.getElementById('user-email').textContent = EMAIL || '';
+
+        // User menu
+        document.getElementById('user-menu-email').textContent = EMAIL || '';
+        document.getElementById('user-avatar').textContent = EMAIL ? EMAIL[0].toUpperCase() : '?';
+        const menuBtn = document.getElementById('user-menu-btn');
+        const menu = document.getElementById('user-menu');
+        menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('open'); });
+        document.addEventListener('click', () => menu.classList.remove('open'));
+        menu.addEventListener('click', (e) => e.stopPropagation());
+
+        // Theme
+        (function initTheme() {
+            const t = localStorage.getItem('sefer_theme') || 'dark';
+            if (t === 'light') { document.getElementById('theme-icon').textContent = '\u2600'; document.getElementById('theme-label').textContent = 'Tema oscuro'; }
+        })();
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            if (next === 'light') { document.documentElement.setAttribute('data-theme', 'light'); document.getElementById('theme-icon').textContent = '\u2600'; document.getElementById('theme-label').textContent = 'Tema oscuro'; }
+            else { document.documentElement.removeAttribute('data-theme'); document.getElementById('theme-icon').textContent = '\u263D'; document.getElementById('theme-label').textContent = 'Tema claro'; }
+            localStorage.setItem('sefer_theme', next);
+        });
 
         const headers = { 'Authorization': `Bearer ${TOKEN}` };
         let allSpecs = [];

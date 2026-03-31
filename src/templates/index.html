@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+<script>if(localStorage.getItem('sefer_theme')==='light')document.documentElement.setAttribute('data-theme','light')</script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sefer</title>
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
     <div class="header">
@@ -17,9 +18,25 @@
                 <a href="/team">Equipo</a>
             </nav>
         </div>
-        <div class="user-info">
-            <span id="user-email"></span>
-            <button class="logout-btn" onclick="logout()">Salir</button>
+        <div class="user-menu-wrapper">
+            <button class="user-menu-btn" id="user-menu-btn">
+                <span class="user-avatar" id="user-avatar"></span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>
+            </button>
+            <div class="user-menu" id="user-menu">
+                <div class="user-menu-header">
+                    <div class="user-menu-email" id="user-menu-email"></div>
+                </div>
+                <div class="user-menu-divider"></div>
+                <button class="user-menu-item" id="theme-toggle">
+                    <span id="theme-icon">&#9789;</span>
+                    <span id="theme-label">Tema claro</span>
+                </button>
+                <div class="user-menu-divider"></div>
+                <button class="user-menu-item user-menu-logout" onclick="logout()">
+                    Cerrar sesion
+                </button>
+            </div>
         </div>
     </div>
 
@@ -69,7 +86,42 @@
             } catch {}
         })();
 
-        document.getElementById('user-email').textContent = EMAIL || '';
+        // User menu
+        const emailDisplay = EMAIL || '';
+        document.getElementById('user-menu-email').textContent = emailDisplay;
+        document.getElementById('user-avatar').textContent = emailDisplay ? emailDisplay[0].toUpperCase() : '?';
+
+        // Dropdown toggle
+        const menuBtn = document.getElementById('user-menu-btn');
+        const menu = document.getElementById('user-menu');
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.toggle('open');
+        });
+        document.addEventListener('click', () => menu.classList.remove('open'));
+        menu.addEventListener('click', (e) => e.stopPropagation());
+
+        // Theme
+        const savedTheme = localStorage.getItem('sefer_theme') || 'dark';
+        applyTheme(savedTheme);
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            applyTheme(next);
+            localStorage.setItem('sefer_theme', next);
+        });
+
+        function applyTheme(theme) {
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('theme-icon').textContent = '\u2600';
+                document.getElementById('theme-label').textContent = 'Tema oscuro';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                document.getElementById('theme-icon').textContent = '\u263D';
+                document.getElementById('theme-label').textContent = 'Tema claro';
+            }
+        }
 
         const chatArea = document.getElementById('chat-area');
         const msgInput = document.getElementById('msg-input');
@@ -81,8 +133,18 @@
         let currentSessionId = localStorage.getItem('sefer_session_id') || null;
         let currentConvId = localStorage.getItem('sefer_conv_id') || null;
 
-        // Restore active conversation on page load
-        if (currentConvId) {
+        // Check for pending message (from spec detail "Consultar con Sefer")
+        const pendingMessage = localStorage.getItem('sefer_pending_message');
+        if (pendingMessage) {
+            localStorage.removeItem('sefer_pending_message');
+            // Start fresh chat with spec context
+            currentSessionId = null;
+            currentConvId = null;
+            setTimeout(() => {
+                msgInput.value = pendingMessage;
+                sendMessage();
+            }, 500);
+        } else if (currentConvId) {
             resumeChat(currentSessionId, parseInt(currentConvId));
         }
 
